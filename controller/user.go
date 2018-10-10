@@ -10,6 +10,7 @@ import (
 	"rest_api/database"
 	"github.com/gorilla/mux"
 	"rest_api/model"
+	"rest_api/respond"
 )
 
 func ReadUser(w http.ResponseWriter, r *http.Request) {
@@ -19,7 +20,7 @@ func ReadUser(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
 		log.Fatal(err)
-		RespondWithError(w, http.StatusBadRequest, "Invalid User Id")
+		respond.RespondWithError(w, http.StatusBadRequest, "Invalid User Id")
 		return
 	}
 	u := model.User{Id: id}
@@ -27,23 +28,23 @@ func ReadUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			RespondWithError(w, http.StatusNotFound, "User Not Found")
+			respond.RespondWithError(w, http.StatusNotFound, "User Not Found")
 		default:
-			RespondWithError(w, http.StatusInternalServerError, err.Error())
+			respond.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
-	RespondWithJSON(w, http.StatusOK, u)
+	respond.RespondWithJSON(w, http.StatusOK, u)
 	return
 }
 
 func ReadUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := model.GetUsers(database.DB)
 	if err != nil {
-		RespondWithError(w, http.StatusBadRequest, err.Error())
+		respond.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	RespondWithJSON(w, http.StatusOK, users)
+	respond.RespondWithJSON(w, http.StatusOK, users)
 }
 
 
@@ -51,7 +52,7 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		RespondWithError(w, http.StatusBadRequest, "Invalid User Id")
+		respond.RespondWithError(w, http.StatusBadRequest, "Invalid User Id")
 		return
 	}
 	u := model.User{Id: id}
@@ -59,13 +60,13 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
-			RespondWithError(w, http.StatusBadRequest, "User Not Found")
+			respond.RespondWithError(w, http.StatusBadRequest, "User Not Found")
 		default:
-			RespondWithError(w, http.StatusBadRequest, err.Error())
+			respond.RespondWithError(w, http.StatusBadRequest, err.Error())
 		}
 		return
 	}
-	RespondWithJSON(w, http.StatusOK, "User deleted")
+	respond.RespondWithJSON(w, http.StatusOK, "User deleted")
 }
 
 func UpdateUser(w http.ResponseWriter, r *http.Request) {
@@ -73,14 +74,14 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		RespondWithError(w, http.StatusBadRequest, "Invalid User Id")
+		respond.RespondWithError(w, http.StatusBadRequest, "Invalid User Id")
 	}
 
 	var u model.User
 	decoder := json.NewDecoder(r.Body)
 	err = decoder.Decode(&u)
 	if err != nil {
-		RespondWithError(w, http.StatusBadRequest, "Invalid Request Payload")
+		respond.RespondWithError(w, http.StatusBadRequest, "Invalid Request Payload")
 		return
 	}
 	defer r.Body.Close()
@@ -90,13 +91,13 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("error not nil")
 		switch err {
 		case sql.ErrNoRows:
-			RespondWithError(w, http.StatusNotFound, "User Not Found")
+			respond.RespondWithError(w, http.StatusNotFound, "User Not Found")
 		default:
-			RespondWithError(w, http.StatusInternalServerError, err.Error())
+			respond.RespondWithError(w, http.StatusInternalServerError, err.Error())
 		}
 		return
 	}
-	RespondWithJSON(w, http.StatusOK, u)
+	respond.RespondWithJSON(w, http.StatusOK, u)
 
 	// Kalo pake form
 	// r.ParseForm()
@@ -134,25 +135,13 @@ func AddUser(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&u)
 	if err != nil {
-		RespondWithError(w, http.StatusBadRequest, err.Error())
+		respond.RespondWithError(w, http.StatusBadRequest, err.Error())
 	}
 	defer r.Body.Close()
 	err = u.AddUser(database.DB)
 	if err != nil {
-		RespondWithError(w, http.StatusBadRequest, "Invalid payload")
+		respond.RespondWithError(w, http.StatusBadRequest, "Invalid payload")
 	}
-	RespondWithJSON(w, http.StatusOK, u)
+	respond.RespondWithJSON(w, http.StatusOK, u)
 }
 
-func RespondWithError(w http.ResponseWriter, code int, message string) {
-	RespondWithJSON(w, code, message)
-}
-
-func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	fmt.Println(payload)
-	response, _ := json.Marshal(payload)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	w.Write(response)
-}
