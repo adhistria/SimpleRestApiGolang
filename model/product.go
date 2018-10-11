@@ -28,7 +28,7 @@ func (p *Product) AddProduct(db *gorm.DB) bool {
 	// p.Id = int(id)
 
 	
-	db.NewRecord(p) // => returns `true` as primary key is blank
+	// db.NewRecord(p) // => returns `true` as primary key is blank
 	 db.Create(&p)
 	err := db.NewRecord(p) // => return `false` after `user` created
 	return err

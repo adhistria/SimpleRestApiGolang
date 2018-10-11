@@ -13,15 +13,16 @@ import (
 	"strconv"
 )
 
-
+var arr_string_err []string
 
 func AddProduct(w http.ResponseWriter, r *http.Request){
+	arr_string_err = arr_string_err[:0]
+
 	decoder := json.NewDecoder(r.Body)
 	var product model.Product
 	err := decoder.Decode(&product)
-	var arr_string_err []string
+	
 	if err!= nil {
-		// var arr_string []string
 		arr_string_err = append(arr_string_err, "Invalid Payload Request")
 		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
 		return
@@ -36,9 +37,9 @@ func AddProduct(w http.ResponseWriter, r *http.Request){
 }
 
 func DeleteProduct(w http.ResponseWriter, r *http.Request){
+	arr_string_err = arr_string_err[:0]
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
-	var arr_string_err []string
 	if err!= nil {
 		arr_string_err = append(arr_string_err, "Invalid Product Id")
 		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
@@ -71,7 +72,7 @@ func DeleteProduct(w http.ResponseWriter, r *http.Request){
 }
 
 func UpdateProduct(w http.ResponseWriter, r *http.Request){
-	var arr_string_err []string
+	arr_string_err = arr_string_err[:0]
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err!= nil {
@@ -92,8 +93,8 @@ func UpdateProduct(w http.ResponseWriter, r *http.Request){
 }
 
 func GetAllProduct(w http.ResponseWriter, r *http.Request){
+	arr_string_err = arr_string_err[:0]
 	products, errors := model.GetAllProduct(database.DB)	
-	var arr_string_err []string
 	if len(errors)>0 {
 		for _,err := range errors{
 			arr_string_err = append(arr_string_err, err.Error())
@@ -105,21 +106,21 @@ func GetAllProduct(w http.ResponseWriter, r *http.Request){
 }
 
 func GetProduct(w http.ResponseWriter, r *http.Request){
+	arr_string_err = arr_string_err[:0]
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
-	var arrStringErr []string
 	if err!= nil {
-		arrStringErr = append(arrStringErr,err.Error())
-		respond.RespondWithError(w, http.StatusBadRequest, arrStringErr)
+		arr_string_err = append(arr_string_err,err.Error())
+		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
 		return
 	}
 	p := model.Product{Id:id}
 	errors := p.GetProduct(database.DB)
 	if len(errors)>0 {
 		for _,err := range errors{
-			arrStringErr = append(arrStringErr,err.Error())
+			arr_string_err = append(arr_string_err,err.Error())
 		}
-		respond.RespondWithError(w, http.StatusBadRequest, arrStringErr)
+		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
 		return
 	}
 	respond.RespondWithJSON(w, http.StatusOK, p)

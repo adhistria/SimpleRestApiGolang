@@ -20,6 +20,7 @@ func init() {
 	// DB.AutoMigrate(&model.Product{})
 	// DB.DropTable(&model.Product{})
 	DB.AutoMigrate(&model.Product{})
+	DB.AutoMigrate(&model.User{})
 	// DB, err = sql.Open("mysql", "root:@tcp(127.0.0.1:3306)/golang_new")
 	if err != nil {
 		log.Fatal(err)
