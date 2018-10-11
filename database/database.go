@@ -1,19 +1,27 @@
 package database
 
 import (
-	"fmt"
+	// "fmt"
 	"log"
-	"database/sql"
-	_ "github.com/go-sql-driver/mysql"
+
+	// "database/sql"
+	// _ "github.com/go-sql-driver/mysql"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
+
+	"github.com/jinzhu/gorm"
+	"rest_api/model"
 )
 
-var DB *sql.DB
+var DB *gorm.DB
 
 func init() {
-	fmt.Println("masuk init lagi")
 	var err error
-	DB, err = sql.Open("mysql", "root:@tcp(127.0.0.1:3306)/golang_new")
-	if err!= nil{
+	DB, err = gorm.Open("mysql", "root:@/golang_new2")
+	// DB.AutoMigrate(&model.Product{})
+	// DB.DropTable(&model.Product{})
+	DB.AutoMigrate(&model.Product{})
+	// DB, err = sql.Open("mysql", "root:@tcp(127.0.0.1:3306)/golang_new")
+	if err != nil {
 		log.Fatal(err)
 	}
 }

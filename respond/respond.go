@@ -6,8 +6,11 @@ import (
 	"fmt"
 )
 
-func RespondWithError(w http.ResponseWriter, code int, message string) {
-	RespondWithJSON(w, code, message)
+func RespondWithError(w http.ResponseWriter, code int, message []string) {
+	f := map[string]interface{}{
+		"Message" : message,
+	}
+	RespondWithJSON(w, code, f)
 }
 
 func RespondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
