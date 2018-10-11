@@ -3,6 +3,7 @@ package model
 import (
 	"database/sql"
 	"fmt"
+	
 )
 
 type Product struct {
@@ -31,13 +32,13 @@ func (p *Product) DeleteProduct(db *sql.DB) error {
 }
 
 func (p *Product) UpdateProduct(db *sql.DB) error{
-	statement := fmt.Sprintf("UPDATE USERS SET NAME='%s' Price= %d where id=%d",p.Name,p.Price,p.Id)
+	statement := fmt.Sprintf("UPDATE PRODUCTS SET NAME='%s' Price= %d where id=%d",p.Name,p.Price,p.Id)
 	_, err := db.Exec(statement)
 	return err
 }
 
 func GetAllProduct(db *sql.DB) ([]Product, error){
-	statement := fmt.Sprintf("SELECT * FROM PRODUCT")
+	statement := fmt.Sprintf("SELECT * FROM PRODUCTS")
 	var products []Product
 	rows, err := db.Query(statement)
 	for rows.Next(){
@@ -52,7 +53,7 @@ func GetAllProduct(db *sql.DB) ([]Product, error){
 }
 
 func (p *Product) GetProduct(db *sql.DB) error{
-	statement := fmt.Sprintf("SELECT * FROM USERS WHERE ID = %d",p.Id)
-	err := db.QueryRow(statement).Scan(p.Id, p.Name, p.Price, p.UserId)
+	statement := fmt.Sprintf("SELECT * FROM PRODUCTS WHERE ID = %d",p.Id)
+	err := db.QueryRow(statement).Scan(&p.Id, &p.Name, &p.Price, &p.UserId)
 	return err
 }

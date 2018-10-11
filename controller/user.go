@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"rest_api/database"
-	"github.com/gorilla/mux"
 	"rest_api/model"
 	"rest_api/respond"
+	"strconv"
+
+	"github.com/gorilla/mux"
 )
 
 func ReadUser(w http.ResponseWriter, r *http.Request) {
@@ -24,7 +25,7 @@ func ReadUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u := model.User{Id: id}
-	err = u.GetUser(database.DB)
+	new_user, err := u.GetUser(database.DB)
 	if err != nil {
 		switch err {
 		case sql.ErrNoRows:
@@ -34,7 +35,7 @@ func ReadUser(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	respond.RespondWithJSON(w, http.StatusOK, u)
+	respond.RespondWithJSON(w, http.StatusOK, new_user)
 	return
 }
 
@@ -46,7 +47,6 @@ func ReadUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	respond.RespondWithJSON(w, http.StatusOK, users)
 }
-
 
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -145,3 +145,25 @@ func AddUser(w http.ResponseWriter, r *http.Request) {
 	respond.RespondWithJSON(w, http.StatusOK, u)
 }
 
+func GetUserProduct(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("User Product")
+	vars := mux.Vars(r)
+	id, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		respond.RespondWithError(w, http.StatusBadRequest, "Invalid User Id")
+		return
+	}
+	u := model.User{Id: id}
+	err = u.GetUserProduct(database.DB)
+	if err != nil {
+		switch err {
+		case sql.ErrNoRows:
+			respond.RespondWithError(w, http.StatusBadRequest, "User Notr Found")
+		default:
+			respond.RespondWithError(w, http.StatusBadRequest, err.Error())
+		}
+		return
+	}
+	respond.RespondWithJSON(w, http.StatusOK, u)
+
+}

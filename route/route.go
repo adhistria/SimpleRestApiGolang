@@ -11,6 +11,7 @@ var Router *mux.Router
 func init() {
 	Router = mux.NewRouter()
 
+	Router.HandleFunc("/user/product/{id:[0-9]+}", controller.GetUserProduct).Methods("GET")
 	Router.HandleFunc("/user/{id:[0-9]+}", controller.ReadUser).Methods("GET")
 	Router.HandleFunc("/user/{id:[0-9]+}", controller.UpdateUser).Methods("PUT")
 	Router.HandleFunc("/users", controller.ReadUsers).Methods("GET")
@@ -21,5 +22,6 @@ func init() {
 	Router.HandleFunc("/products", controller.GetAllProduct).Methods("GET")
 	Router.HandleFunc("/products/{id:[0-9]}", controller.DeleteProduct).Methods("DELETE")
 	Router.HandleFunc("/products", controller.AddProduct).Methods("POST")
+	
 
 }

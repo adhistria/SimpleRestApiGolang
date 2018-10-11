@@ -1,19 +1,30 @@
 package model
 
-
 import (
 	"database/sql"
 	"fmt"
 )
+
 type User struct {
-	Id   int
-	Name string
-	Age  int
+	Id       int
+	Name     string
+	Age      int
+	Products []Product
 }
 
-func (u *User) GetUser(db *sql.DB) error {
+func (u *User) GetUser(db *sql.DB) (interface{},error) {
 	statement := fmt.Sprintf("SELECT * FROM USERS WHERE ID=%d", u.Id)
-	return db.QueryRow(statement).Scan(&u.Id, &u.Name, &u.Age)
+	err:= db.QueryRow(statement).Scan(&u.Id, &u.Name, &u.Age)
+	if err!= nil {
+		return nil, err
+	}
+	f := map[string]interface{}{
+		"Id": u.Id,
+		"Name":  u.Name,
+		"Age": u.Age,
+	}
+	
+	return f, nil
 
 }
 
@@ -64,4 +75,28 @@ func (u *User) AddUser(db *sql.DB) error {
 		u.Id = int(id)
 		return err
 	}
+}
+
+func (u *User) GetUserProduct(db *sql.DB) error {
+	// statement := fmt.Sprintf("SELECT * FROM USERS.ID INNER JOIN PRODUCTS.ID ON USERS.ID=PRODUCTS.ID WHERE USER.ID=%d",u.Id)
+	statement1 := fmt.Sprintf("SELECT * FROM USERS WHERE ID=%d", u.Id)
+	err := db.QueryRow(statement1).Scan(&u.Id, &u.Name, &u.Age)
+	if err != nil {
+		return err
+	}
+	statement2 := fmt.Sprintf("SELECT products.id, products.name, products.price FROM products INNER JOIN users ON USERS.ID=PRODUCTS.USER_ID WHERE users.id=%d", u.Id)
+	rows, err := db.Query(statement2)
+	for rows.Next() {
+		var product Product
+		err := rows.Scan(&product.Id, &product.Name, &product.Price)
+		if err != nil {
+			return err
+		}
+		u.Products = append(u.Products, product)
+	}
+	
+	// m := f.(map[string]interface{})
+
+
+	return err
 }
