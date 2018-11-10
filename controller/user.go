@@ -11,8 +11,19 @@ import (
 	"rest_api/respond"
 	"strconv"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
+	// "context"
 )
+
+func GetUserLogin(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("masukz xcoy")
+	userInfo := r.Context().Value("userInfo").(jwt.MapClaims)
+
+	// var user model.User
+	message := fmt.Sprintf("hello %s", userInfo["username"])
+	w.Write([]byte(message))
+}
 
 func ReadUser(w http.ResponseWriter, r *http.Request) {
 	// read params
@@ -37,6 +48,28 @@ func ReadUser(w http.ResponseWriter, r *http.Request) {
 	}
 	respond.RespondWithJSON(w, http.StatusOK, new_user)
 	return
+}
+
+func Login(w http.ResponseWriter, req *http.Request) {
+	arr_string_err = arr_string_err[:0]
+	var user model.User
+	err := json.NewDecoder(req.Body).Decode(&user)
+	fmt.Println(user)
+	if err != nil {
+		fmt.Println("masuk error")
+		arr_string_err = append(arr_string_err, err.Error())
+		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
+		return
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"username": user.Username,
+		"password": user.Password,
+	})
+	tokenString, error := token.SignedString([]byte("secret"))
+	if error != nil {
+		fmt.Println(error)
+	}
+	json.NewEncoder(w).Encode(model.JwtToken{Token: tokenString})
 }
 
 func ReadUsers(w http.ResponseWriter, r *http.Request) {
