@@ -4,12 +4,14 @@ import (
 	// "database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"rest_api/database"
 	"rest_api/model"
 	"rest_api/respond"
 	"strconv"
+
+	"bytes"
+	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
@@ -19,67 +21,131 @@ import (
 func GetUserLogin(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("masukz xcoy")
 	userInfo := r.Context().Value("userInfo").(jwt.MapClaims)
+	fmt.Println(userInfo)
 
 	// var user model.User
-	message := fmt.Sprintf("hello %s", userInfo["username"])
+	message := fmt.Sprintf("hello %s", userInfo["Username"])
 	w.Write([]byte(message))
 }
 
 func ReadUser(w http.ResponseWriter, r *http.Request) {
 	// read params
-	arr_string_err = arr_string_err[:0]
 	vars := mux.Vars(r)
 	// convert string to integer
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		log.Fatal(err)
-		arr_string_err = append(arr_string_err, "Invalid User Id")
-		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
+		respond.RespondWithError(w, http.StatusBadRequest, "Invalid User Id")
 		return
 	}
 	u := model.User{Id: id}
-	new_user, errors := u.GetUser(database.DB)
-	if len(errors) > 0 {
-		for _, err := range errors {
-			arr_string_err = append(arr_string_err, err.Error())
-		}
-		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
+	err = u.GetUser(database.DB)
+	if err != nil {
+		// arr_string_err = append(arr_string_err,)
+		respond.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	respond.RespondWithJSON(w, http.StatusOK, new_user)
+	respond.RespondWithJSON(w, http.StatusOK, u)
 	return
 }
 
+type MyResponseWriter struct {
+	http.ResponseWriter
+	buf *bytes.Buffer
+}
+
+func (mrw *MyResponseWriter) Write(p []byte) (int, error) {
+	return mrw.buf.Write(p)
+}
+
 func Login(w http.ResponseWriter, req *http.Request) {
-	arr_string_err = arr_string_err[:0]
+	// err := req.ParseForm()
+	//     username := req.Form.Get("username")
+	//     password := req.Form.Get("password")
+	//     fmt.Println(username, password)
+	// fmt.Printf("username %s\n", req.FormValue("username"))
+	// fmt.Printf("password %s\n", req.FormValue("password"))
+
+	// if err != nil {
+	// 	fmt.Println("data bukan form data")
+	// }
+	// for key, values := range req.PostForm {
+	// 	fmt.Println("key", key)
+	// 	fmt.Println("value", values)
+	// }
 	var user model.User
-	err := json.NewDecoder(req.Body).Decode(&user)
-	fmt.Println(user)
+	user.Username = req.FormValue("username")
+	user.Password = req.FormValue("password")
+	decoder := json.NewDecoder(req.Body)
+	_ = decoder.Decode(&user)
+
+	err := user.Login(database.DB)
 	if err != nil {
-		fmt.Println("masuk error")
-		arr_string_err = append(arr_string_err, err.Error())
-		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
+		// arr_string_err = append(arr_string_err,)
+		respond.RespondWithError(w, http.StatusBadRequest, "Invalid Payload")
 		return
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"username": user.Username,
-		"password": user.Password,
-	})
-	tokenString, error := token.SignedString([]byte("secret"))
-	if error != nil {
-		fmt.Println(error)
+	// claims = jwt.Claims()
+	claims := model.Claims{
+		StandardClaims: jwt.StandardClaims{
+			Issuer:    "Omah Ihrom Janti Claims",
+			ExpiresAt: time.Now().Add(time.Duration(1) * time.Hour).Unix(),
+		},
+		Username: user.Username,
+		UserId  : user.Id,
 	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	tokenString, _ := token.SignedString([]byte("omahihromjantisupersecretboy"))
+
 	json.NewEncoder(w).Encode(model.JwtToken{Token: tokenString})
+
+	// v := req.Form
+	// fmt.Println(req.Body["username"])
+
+	// b, err := ioutil.ReadAll(req.Body)
+	// fmt.Println(b)
+	// arr_string_err = arr_string_err[:0]
+	// var user2 model.User
+	// decoder2 := json.NewDecoder(req.Body)
+	// err = decoder2.Decode(&user2)
+	// // err = json.NewDecoder(req.Body).Decode(&user2)
+	// fmt.Println(user2)
+	// if err != nil {
+	// 	fmt.Println("masuk error")
+	// 	arr_string_err = append(arr_string_err, err.Error())
+	// 	respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
+	// 	return
+	// }
+
+	// error := user.Login(database.DB)
+	// if error != nil {
+	// 	arr_string_err = append(arr_string_err, err.Error())
+	// }
+
+	// claims := model.Claims{
+	// 	StandardClaims: jwt.StandardClaims{
+	// 		Issuer:    "Omah Ihrom Janti Claims",
+	// 		ExpiresAt: time.Now().Add(time.Duration(1) * time.Hour).Unix(),
+	// 	},
+	// 	Username: user.Username,
+	// 	// Email:    userInfo["email"].(string),
+	// 	// Group:    userInfo["group"].(string),
+	// 	// "username": user.Username,
+	// 	// "password": user.Password,
+	// }
+
+	// token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// tokenString, error := token.SignedString([]byte("omahihromjantisupersecretboy"))
+
+	// json.NewEncoder(w).Encode(model.JwtToken{Token: tokenString})
 }
 
 func ReadUsers(w http.ResponseWriter, r *http.Request) {
-	arr_string_err = arr_string_err[:0]
-	users, errors := model.GetUsers(database.DB)
-	if len(errors) > 0 {
-		for _, err := range errors {
-			arr_string_err = append(arr_string_err, err.Error())
-		}
-		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
+	users, err := model.GetUsers(database.DB)
+	if err != nil {
+		respond.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	respond.RespondWithJSON(w, http.StatusOK, users)
@@ -89,23 +155,15 @@ func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		arr_string_err = append(arr_string_err, "Invalid User Id")
-		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
+		// arr_string_err = append(arr_string_err,)
+		respond.RespondWithError(w, http.StatusBadRequest, "Invalid User Id")
 		return
 	}
 	u := model.User{Id: id}
-	errors := u.DeleteUser(database.DB)
-	if len(errors) > 0 {
-		// switch err {
-		// case sql.ErrNoRows:
-		// 	respond.RespondWithError(w, http.StatusBadRequest, "User Not Found")
-		// default:
-		// 	respond.RespondWithError(w, http.StatusBadRequest, err.Error())
-		// }
-		for _, err := range errors {
-			arr_string_err = append(arr_string_err, err.Error())
-		}
-		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
+	err = u.DeleteUser(database.DB)
+	if err != nil {
+		// arr_string_err = append(arr_string_err,)
+		respond.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	respond.RespondWithJSON(w, http.StatusOK, "User deleted")
@@ -116,33 +174,23 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		arr_string_err = append(arr_string_err, "Invalid User Id")
-		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
+		respond.RespondWithError(w, http.StatusBadRequest, "Invalid User Id")
+		return
 	}
 
 	var u model.User
 	decoder := json.NewDecoder(r.Body)
 	err = decoder.Decode(&u)
 	if err != nil {
-		arr_string_err = append(arr_string_err, "Invalid Request Payload")
-		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
+		respond.RespondWithError(w, http.StatusBadRequest, "Invalid Payload")
 		return
 	}
 	defer r.Body.Close()
 	u.Id = id
-	errors := u.UpdateUser(database.DB)
-	if len(errors) > 0 {
-		// fmt.Println("error not nil")
-		// switch err {
-		// case sql.ErrNoRows:
-		// 	respond.RespondWithError(w, http.StatusNotFound, "User Not Found")
-		// default:
-		// 	respond.RespondWithError(w, http.StatusInternalServerError, err.Error())
-		// }
-		for _, err := range errors {
-			arr_string_err = append(arr_string_err, err.Error())
-		}
-		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
+	err = u.UpdateUser(database.DB)
+	if err != nil {
+		// arr_string_err = append(arr_string_err,)
+		respond.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	respond.RespondWithJSON(w, http.StatusOK, u)
@@ -183,17 +231,15 @@ func AddUser(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&u)
 	if err != nil {
-		arr_string_err = append(arr_string_err, err.Error())
-		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
+		respond.RespondWithError(w, http.StatusBadRequest, "Invalid Payload")
+		return
 	}
 	defer r.Body.Close()
-	errors := u.AddUser(database.DB)
-	if len(errors) > 0 {
-		for _, err := range errors {
-			arr_string_err = append(arr_string_err, err.Error())
-		}
-		// arr_string_err = append(arr_string_err, err.Error())
-		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
+	err = u.AddUser(database.DB)
+	if err != nil {
+		// arr_string_err = append(arr_string_err,)
+		respond.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
 	}
 	respond.RespondWithJSON(w, http.StatusOK, u)
 }
@@ -203,25 +249,17 @@ func GetUserProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		arr_string_err = append(arr_string_err, "Invalid User Id")
-		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
+		// arr_string_err = append(arr_string_err,)
+		respond.RespondWithError(w, http.StatusBadRequest, "Invalid User Id")
 		return
 	}
 	u := model.User{Id: id}
 	fmt.Println("get users")
-	errors := u.GetUserProduct(database.DB)
+	err = u.GetUserProduct(database.DB)
 	fmt.Println("get products")
-	if len(errors) > 0 {
-		// switch err {
-		// case sql.ErrNoRows:
-		// 	respond.RespondWithError(w, http.StatusBadRequest, "User Notr Found")
-		// default:
-		// 	respond.RespondWithError(w, http.StatusBadRequest, err.Error())
-		// }
-		for _, err := range errors {
-			arr_string_err = append(arr_string_err, err.Error())
-		}
-		respond.RespondWithError(w, http.StatusBadRequest, arr_string_err)
+	if err != nil {
+		// arr_string_err = append(arr_string_err,)
+		respond.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	respond.RespondWithJSON(w, http.StatusOK, u)

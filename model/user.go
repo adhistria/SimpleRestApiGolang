@@ -2,6 +2,7 @@ package model
 
 import (
 	// "database/sql"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
 	// "fmt"
 )
@@ -9,18 +10,23 @@ import (
 type User struct {
 	Id       int    `gorm:"AUTO_INCREMENT"`
 	Username string `gorm:"size:50"`
+	Email    string `gorm:"size:50"`
+	Age 	 int
 	Password string
-	Name     string `gorm:"size:50"`
-	Age      int
+	Name     string    `gorm:"size:50"`
 	Products []Product `gorm:"foreignkey:User_Id`
 }
 
-// type NewUser struct {
-// 	Id       int `gorm:"AUTO_INCREMENT"`
-// 	Username     string `gorm:"size:50"`
-// 	Password     string
-// 	Products []Product `gorm:"foreignkey:User_Id`
-// }
+type UserLogin struct{
+	Username string
+	Password string
+}
+
+type Claims struct {
+	jwt.StandardClaims
+	Username string `json:"Username"`
+	UserId   int 	`json:"User_Id"`
+}
 
 type JwtToken struct {
 	Token string `json:"token"`
@@ -30,28 +36,24 @@ type Exception struct {
 	Message string `json:"message"`
 }
 
-func (u *User) GetUser(db *gorm.DB) (interface{}, []error) {
+func (u *User) GetUser(db *gorm.DB) error {
 	// statement := fmt.Sprintf("SELECT * FROM USERS WHERE ID=%d", u.Id)
 	// err:= db.QueryRow(statement).Scan(&u.Id, &u.Name, &u.Age)
 	// if err!= nil {
 	// 	return nil, err
 	// }
-	res := db.First(&u)
-	if len(res.GetErrors()) > 0 {
-		return nil, res.GetErrors()
-	}
+	err := db.First(&u).Error
+	return err
 
-	f := map[string]interface{}{
-		"Id":   u.Id,
-		"Name": u.Name,
-		"Age":  u.Age,
-	}
-
-	return f, nil
+	// f := map[string]interface{}{
+	// 	"Id":   u.Id,
+	// 	"Name": u.Name,
+	// 	"Age":  u.Age,
+	// }
 
 }
 
-func GetUsers(db *gorm.DB) ([]User, []error) {
+func GetUsers(db *gorm.DB) ([]User, error) {
 	// statement := fmt.Sprintf("SELECT * FROM USERS")
 	// rows, err := db.Query(statement)
 	// if err != nil {
@@ -69,11 +71,14 @@ func GetUsers(db *gorm.DB) ([]User, []error) {
 	// }
 	// return users, nil
 	var users []User
-	res := db.Find(&users)
-	return users, res.GetErrors()
+	err := db.Find(&users).Error
+	if err!=nil {
+		return nil, err
+	}
+	return users, nil
 }
 
-func (u *User) UpdateUser(db *gorm.DB) []error {
+func (u *User) UpdateUser(db *gorm.DB) error {
 	// statement := fmt.Sprintf("UPDATE USERS  SET Name='%s', Age=%d WHERE ID=%d", u.Name, u.Age, u.Id)
 	// fmt.Println("db update user")
 	// // statement := fmt.Sprintf("UPDATE users SET name='%s', age=%d WHERE id=%d", u.Name, u.Age, u.ID)
@@ -81,24 +86,24 @@ func (u *User) UpdateUser(db *gorm.DB) []error {
 	// _, err := db.Exec(statement)
 	// return err
 	db.First(&u)
-	res := db.Save(&u)
-	return res.GetErrors()
+	err := db.Save(&u).Error
+	return err
 
 }
 
-func (u *User) DeleteUser(db *gorm.DB) []error {
+func (u *User) DeleteUser(db *gorm.DB) error {
 	// statement := fmt.Sprintf("DELETE USERS WHERE ID=%d", u.Id)
 	// _, err := db.Exec(statement)
 	// return err
-	errors := db.First(&u).GetErrors()
-	if len(errors) > 0 {
-		return errors
+	err := db.First(&u).Error
+	if err!=nil {
+		return err
 	}
-	errors = db.Delete(&u).GetErrors()
-	return errors
+	err = db.Delete(&u).Error
+	return err
 }
 
-func (u *User) AddUser(db *gorm.DB) []error {
+func (u *User) AddUser(db *gorm.DB) error {
 	// statement := fmt.Sprintf("INSERT INTO USERS (name,age) values('%s',%d)", u.Name, u.Age)
 	// res, err := db.Exec(statement)
 	// if err != nil {
@@ -112,11 +117,11 @@ func (u *User) AddUser(db *gorm.DB) []error {
 	// 	return err
 	// }
 	db.NewRecord(u)
-	errors := db.Create(&u).GetErrors()
-	return errors
+	err := db.Create(&u).Error
+	return err
 }
 
-func (u *User) GetUserProduct(db *gorm.DB) []error {
+func (u *User) GetUserProduct(db *gorm.DB) error {
 	// statement := fmt.Sprintf("SELECT * FROM USERS.ID INNER JOIN PRODUCTS.ID ON USERS.ID=PRODUCTS.ID WHERE USER.ID=%d",u.Id)
 	// statement1 := fmt.Sprintf("SELECT * FROM USERS WHERE ID=%d", u.Id)
 	// err := db.QueryRow(statement1).Scan(&u.Id, &u.Name, &u.Age)
@@ -143,17 +148,14 @@ func (u *User) GetUserProduct(db *gorm.DB) []error {
 	// }
 	// statement := fmt.Sprintf("USER_ID = %d",u.Id)
 	// resProduct := db.Where(statement).Find(&u.Products)
-	res := db.Model(&u).Related(&u.Products)
+	err := db.Model(&u).Related(&u.Products).Error
 
 	// res := db.Model(&u).Find(products)
 	// fmt.Println(res.GetErrors())
-	return res.GetErrors()
+	return err
 }
 
-func (u *User) Login(db *gorm.DB) []error {
-	// db.Where('')
-	// db.Where("username = ?", u.username).First(&user)
-	errors := db.Where("username = ? AND password >= ?", u.Username, u.Password).Find(&u).GetErrors()
-	return errors
-
+func (u *User) Login(db *gorm.DB) error {
+	err := db.Where("username = ? AND password = ?", u.Username, u.Password).First(&u).Error
+	return err
 }
