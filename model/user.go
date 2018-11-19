@@ -2,22 +2,26 @@ package model
 
 import (
 	// "database/sql"
+	"golang.org/x/crypto/bcrypt"
+
+	"fmt"
+	"log"
+
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
-	// "fmt"
 )
 
 type User struct {
 	Id       int    `gorm:"AUTO_INCREMENT"`
 	Username string `gorm:"size:50"`
 	Email    string `gorm:"size:50"`
-	Age 	 int
+	Age      int
 	Password string
 	Name     string    `gorm:"size:50"`
 	Products []Product `gorm:"foreignkey:User_Id`
 }
 
-type UserLogin struct{
+type UserLogin struct {
 	Username string
 	Password string
 }
@@ -25,7 +29,7 @@ type UserLogin struct{
 type Claims struct {
 	jwt.StandardClaims
 	Username string `json:"Username"`
-	UserId   int 	`json:"User_Id"`
+	UserId   int    `json:"User_Id"`
 }
 
 type JwtToken struct {
@@ -72,7 +76,7 @@ func GetUsers(db *gorm.DB) ([]User, error) {
 	// return users, nil
 	var users []User
 	err := db.Find(&users).Error
-	if err!=nil {
+	if err != nil {
 		return nil, err
 	}
 	return users, nil
@@ -96,7 +100,7 @@ func (u *User) DeleteUser(db *gorm.DB) error {
 	// _, err := db.Exec(statement)
 	// return err
 	err := db.First(&u).Error
-	if err!=nil {
+	if err != nil {
 		return err
 	}
 	err = db.Delete(&u).Error
@@ -116,6 +120,11 @@ func (u *User) AddUser(db *gorm.DB) error {
 	// 	u.Id = int(id)
 	// 	return err
 	// }
+	// newPassword := hashPassword(u.Password)
+	newPassword := hashPassword("password")
+	fmt.Println(u)
+	u.Password = string(newPassword)
+	fmt.Println(u)
 	db.NewRecord(u)
 	err := db.Create(&u).Error
 	return err
@@ -156,6 +165,29 @@ func (u *User) GetUserProduct(db *gorm.DB) error {
 }
 
 func (u *User) Login(db *gorm.DB) error {
-	err := db.Where("username = ? AND password = ?", u.Username, u.Password).First(&u).Error
+	// byteHash := hashPassword(u.Password)
+	password := u.Password
+	// fmt.Println("hash password", byteHash)
+	err := db.Where("username = ?", u.Username).First(&u).Error
+	// fmt.Println(u)
+	if err != nil {
+		fmt.Println("ga dapat datanya")
+		return err
+	}
+	// fmt.Println(byteHash, u.Password)
+	err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password))
+	// fmt.Println(byteHash, []byte(u.Password))
+	if err != nil {
+		fmt.Println("ga sama")
+		return err
+	}
 	return err
+}
+
+func hashPassword(password string) []byte {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
+	if err != nil {
+		log.Println(err)
+	}
+	return hash
 }

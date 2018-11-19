@@ -28,5 +28,6 @@ func init() {
 	Router.HandleFunc("/products/{id:[0-9]+}", middleware.ValidateMiddleware(controller.DeleteProduct)).Methods("DELETE")
 	Router.HandleFunc("/products", middleware.ValidateMiddleware(controller.AddProduct)).Methods("POST")
 	Router.HandleFunc("/userinfo", middleware.ValidateMiddleware(controller.GetUserLogin)).Methods("GET")
+	Router.HandleFunc("/uploads", controller.UploadFiles).Methods("POST")	
 	Router.HandleFunc("/login", controller.Login).Methods("POST")
 }

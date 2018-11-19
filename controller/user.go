@@ -73,15 +73,15 @@ func Login(w http.ResponseWriter, req *http.Request) {
 	// 	fmt.Println("value", values)
 	// }
 	var user model.User
-	user.Username = req.FormValue("username")
-	user.Password = req.FormValue("password")
+	// user.Username = req.FormValue("username")
+	// user.Password = req.FormValue("password")
 	decoder := json.NewDecoder(req.Body)
 	_ = decoder.Decode(&user)
-
+	fmt.Println(user)
 	err := user.Login(database.DB)
 	if err != nil {
 		// arr_string_err = append(arr_string_err,)
-		respond.RespondWithError(w, http.StatusBadRequest, "Invalid Payload")
+		respond.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	// claims = jwt.Claims()
@@ -91,7 +91,7 @@ func Login(w http.ResponseWriter, req *http.Request) {
 			ExpiresAt: time.Now().Add(time.Duration(1) * time.Hour).Unix(),
 		},
 		Username: user.Username,
-		UserId  : user.Id,
+		UserId:   user.Id,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
