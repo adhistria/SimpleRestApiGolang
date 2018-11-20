@@ -2,156 +2,89 @@ package controller
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"rest_api/database"
-	"rest_api/helper"
-	"rest_api/model"
-	"rest_api/respond"
+	"path/filepath"
+	"omahihrom/database"
+	"omahihrom/helper"
+	"omahihrom/model"
+	"omahihrom/respond"
 	"strconv"
+	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 )
 
-func UploadFiles(w http.ResponseWriter, r *http.Request) {
-	r.ParseMultipartForm(32 << 20) // 32MB is the default used by FormFile
-	formdata := r.MultipartForm    // ok, no problem so far, read the Form data
-	//get the *fileheaders
-	files := formdata.File["file_uploads"] // grab the filenames
-	// m := r.MultipartForm
-	// header := m.
+func AddProduct(w http.ResponseWriter, req *http.Request) {
 
-	// multipart.FileHeader(files)
-	for i, _ := range files { // loop through the files one by one
-		// mimeType := multipart.FileHeader(*files[i])
+	userInfo := req.Context().Value("userInfo").(jwt.MapClaims)
+
+	req.ParseMultipartForm(32 << 20)
+
+	formdata := req.MultipartForm
+	files := formdata.File["file_uploads"]
+	price := req.FormValue("price")
+	name := req.Form.Get("name")
+	userId := int(userInfo["UserId"].(float64))
+	convertedPrice, err := strconv.Atoi(price)
+
+	helper.CheckError(w, err)
+
+	product := model.Product{Name: name, UserId: userId, Price: convertedPrice}
+	err = product.AddProduct(database.DB)
+
+	for i, _ := range files {
+
 		file, err := files[i].Open()
+
 		defer file.Close()
-		if err != nil {
-			fmt.Fprintln(w, err)
-			return
-		}
-		// helper.GetFileContentType(file)
-		// multipart.FileHeader(file)
-		// content_type, err := helper.GetFileContentType(file.(*os.File))
-		// if err!= nil {
-		// 	respond.RespondWithError(w, http.StatusBadRequest, err.Error())
-		// 	return
-		// }
-		// fmt.Println(content_type)
-		// out, err := os.Create("/Users/m.adhisatria/Documents/Beego/" + files[i].Filename)
-		out, err := os.Create("./tmp/" + files[i].Filename)
+
+		helper.CheckError(w, err)
+
+		mimeType := files[i].Header.Get("Content-Type")
+		err = helper.CheckMimeType(mimeType)
+		helper.CheckError(w, err)
+
+		extension := filepath.Ext(files[i].Filename)
+		unixTimeStamp := int32(time.Now().Unix())
+		imgUrl := "/static/" + helper.ConvertToString(unixTimeStamp) + extension
+		image := model.Image{Url: imgUrl, ProductId: product.Id}
+
+		err = image.AddImage(database.DB)
+		helper.CheckError(w, err)
+		// helper.SaveImage(imgUrl, file )
+
+		imgPath := "." + imgUrl
+		out, err := os.Create(imgPath)
 
 		defer out.Close()
-		if err != nil {
-			fmt.Fprintf(w, "Unable to create the file for writing. Check your write access privilege")
-			fmt.Fprintf(w, err.Error())
-			return
-		}
+		helper.CheckError(w, err)
 
-		_, err = io.Copy(out, file) // file not files[i] !
+		_, err = io.Copy(out, file)
 
-		if err != nil {
-			fmt.Fprintln(w, err)
-			return
-		}
-
-		fmt.Fprintf(w, "Files uploaded successfully : ")
-		fmt.Fprintf(w, files[i].Filename+"\n")
-
+		helper.CheckError(w, err)
 	}
 
-	// for _, file_upload := range file_uploads {
-	// 	fmt.Println("masuk loop")
-	// 	file, err := file_upload.Open()
-	// 	fmt.Println(file)
-	// 	if err!= nil {
-	// 		respond.RespondWithError(w, http.StatusBadRequest, "Invalid Data")
-	// 	}
-	// 	helper.SaveMultipleFile(file)
-	// 	// f is one of the files
-	// }
-	respond.RespondWithJSON(w, http.StatusOK, "product")
-
-}
-
-func AddProduct(w http.ResponseWriter, r *http.Request) {
-	userInfo := r.Context().Value("userInfo").(jwt.MapClaims)
-	decoder := json.NewDecoder(r.Body)
-	var product model.Product
-	err := decoder.Decode(&product)
-	product.User_Id = int(userInfo["User_Id"].(float64))
-	if err != nil {
-		respond.RespondWithError(w, http.StatusBadRequest, "Invalid Payload Request")
-		return
-	}
-
-	// r.ParseMultipartForm(32 << 20) // 32MB is the default used by FormFile
-	// file_uploads := r.MultipartForm.File["file_uploads"]
-	// for _, file_upload := range file_uploads {
-	// 	file, err := file_upload.Open()
-
-	// 	// f is one of the files
-	// }
-
-	file, handle, err := r.FormFile("file")
-	if err != nil {
-		fmt.Fprintf(w, "%v", err)
-		return
-	}
-	defer file.Close()
-
-	mimeType := handle.Header.Get("Content-Type")
-	switch mimeType {
-	case "image/jpeg":
-		err = helper.SaveFile(file, handle)
-	case "image/png":
-		err = helper.SaveFile(file, handle)
-	default:
-		respond.RespondWithError(w, http.StatusBadRequest, "The format file is not valid.")
-		return
-	}
-	err = product.AddProduct(database.DB)
-	if err != nil {
-		respond.RespondWithError(w, http.StatusBadRequest, "Fail Add New Product")
-		return
-	}
+	err = product.GetProduct(database.DB)
+	helper.CheckError(w, err)
 	respond.RespondWithJSON(w, http.StatusOK, product)
+
 }
 
 func DeleteProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		respond.RespondWithError(w, http.StatusBadRequest, "Invalid Product Id")
-	}
+
+	helper.CheckError(w, err)
 
 	p := model.Product{Id: id}
-	// var errors []error
-	// res, err := p.DeleteProduct(database.DB)
 	err = p.DeleteProduct(database.DB)
-	// fmt.Println(res)
-	if err != nil {
-		// for _, err  := range errors {
-		// 	arr_string_err = append(arr_string_err, err.Error())
-		// }
-		respond.RespondWithError(w, http.StatusBadRequest, err.Error())
-		return
-	}
+
+	helper.CheckError(w, err)
+
 	respond.RespondWithJSON(w, http.StatusOK, p)
-	// if err{
-	// 	switch err{
-	// 	case sql.ErrNoRows:
-	// 		respond.RespondWithError(w, http.StatusBadRequest, "Product Not Found")
-	// 	default:
-	// 		respond.RespondWithError(w, http.StatusBadRequest, err.Error())
-	// 	}
-	// 	return
-	// }
-	// var make(map[]string interface{})
-	// respond.RespondWithJSON(w, http.StatusOK, "Delete Success")
 
 }
 
@@ -159,62 +92,36 @@ func UpdateProduct(w http.ResponseWriter, r *http.Request) {
 	userInfo := r.Context().Value("userInfo").(jwt.MapClaims)
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
-	fmt.Println(id)
-	if err != nil {
-		// arr_string_err = append(arr_string_err,)
-		fmt.Println(err.Error())
-		respond.RespondWithError(w, http.StatusBadRequest, "Invalid Product Id")
-		return
-	}
+
+	helper.CheckError(w, err)
 	p := model.Product{Id: id}
 	json.NewDecoder(r.Body).Decode(&p)
-	p.User_Id = int(userInfo["User_Id"].(float64))
-	fmt.Println(p)
-	err = p.UpdateProduct(database.DB)
+	p.UserId = int(userInfo["UserId"].(float64))
 
-	json.NewDecoder(r.Body).Decode(&p)
-	if err != nil {
-		respond.RespondWithError(w, http.StatusBadRequest, err.Error())
-		return
-	}
+	err = p.UpdateProduct(database.DB)
+	helper.CheckError(w, err)
+
 	respond.RespondWithJSON(w, http.StatusOK, p)
 }
 
 func GetAllProduct(w http.ResponseWriter, r *http.Request) {
 	products, err := model.GetAllProduct(database.DB)
-	if err != nil {
-		respond.RespondWithError(w, http.StatusBadRequest, err.Error())
-		return
-	}
+
+	helper.CheckError(w, err)
+
 	respond.RespondWithJSON(w, http.StatusOK, products)
 }
 
 func GetProduct(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		// arr_string_err = append(arr_string_err,)
-		respond.RespondWithError(w, http.StatusBadRequest, "Product Id")
-		return
-	}
+
+	helper.CheckError(w, err)
+
 	p := model.Product{Id: id}
 	err = p.GetProduct(database.DB)
-	fmt.Println("sebenernya udah masuk get product")
-	if err != nil {
-		// arr_string_err = append(arr_string_err,)
-		respond.RespondWithError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	respond.RespondWithJSON(w, http.StatusOK, p)
-	// if err!= nil {
-	// 	switch err{
-	// 	case sql.ErrNoRows:
-	// 		respond.RespondWithError(w, http.StatusBadRequest, "Product Not Found")
-	// 	default:
-	// 		respond.RespondWithError(w, http.StatusBadRequest, err.Error())
-	// 	}
-	// 	return
-	// }
-	// respond.RespondWithJSON(w, http.StatusOK, p)
 
+	helper.CheckError(w, err)
+
+	respond.RespondWithJSON(w, http.StatusOK, p)
 }
